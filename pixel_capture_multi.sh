@@ -1,12 +1,13 @@
 #!/bin/bash
 # =====================================================
-# Pixel Auto Capture + Transfer Script (Mac/Linux)
+# Pixel Auto Capture + Transfer Script (Mac/Linux/RPi)
 # Supports MULTIPLE devices simultaneously
+# Auto-relaunches camera if it closes
 # Deletes photos from phone after successful pull
 # =====================================================
 
 # --- CONFIGURATION ---
-SAVE_FOLDER="$HOME/PixelCaptures"
+SAVE_FOLDER="/Users/ilgarmammadov/Desktop/photos"
 INTERVAL=7
 # ---------------------
 
@@ -33,6 +34,17 @@ echo "Found devices:"
 echo "$DEVICES"
 echo ""
 
+# Function to ensure camera is open on a device
+ensure_camera_open() {
+    DEVICE_ID=$1
+    FOCUS=$(adb -s "$DEVICE_ID" shell dumpsys window | grep mCurrentFocus)
+    if ! echo "$FOCUS" | grep -q "com.google.android.GoogleCamera"; then
+        echo "[$DEVICE_ID] Camera not open, launching..."
+        adb -s "$DEVICE_ID" shell am start -n com.google.android.GoogleCamera/com.android.camera.CameraLauncher
+        sleep 3
+    fi
+}
+
 # Function to capture from a single device in a loop
 capture_device() {
     DEVICE_ID=$1
@@ -43,6 +55,9 @@ capture_device() {
 
     while true; do
         TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
+
+        # Make sure camera is open
+        ensure_camera_open "$DEVICE_ID"
 
         # Take photo on this specific device
         adb -s "$DEVICE_ID" shell input keyevent 27
